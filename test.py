@@ -1,35 +1,55 @@
-import pandas as pd
-import re
+import os
+import shutil
+from PyPDF2 import PdfReader
 
-# Carrega o arquivo Excel "extrato1.xlsx" (supondo que esteja na mesma pasta)
-df = pd.read_excel("extrato1.xlsx")
-
-# Lista para armazenar os dados formatados
-formatted_data = []
-
-# Processa cada linha da tabela importada
-for index, row in df.iterrows():
-    # Acessa o valor da célula (assumindo que todas as informações estão na primeira coluna)
-    line = str(row[0])  # Se a primeira coluna contém todos os dados
-    
-    # Usando regex para capturar os elementos
-    match = re.match(r"(\d{1,2}\.\d{1,2}) (\d{1,2}\.\d{1,2}) (.+?) (\d{1,3}(?:\.\d{2})?) (\d{1,3}(?:\.\d{2})?)", line)
-    if match:
-        # Separando as partes da linha
-        data_1 = match.group(1)
-        data_2 = match.group(2)
-        descricao = match.group(3).strip()
-        valor = match.group(4)
-        saldo = match.group(5)
+# Função para buscar uma palavra em um PDF após remover os espaços
+def buscar_palavra_pdf_sem_espacos(pdf_path, palavra):
+    try:
+        reader = PdfReader(pdf_path)
+        texto_completo = ""
         
-        # Adiciona os dados formatados na lista
-        formatted_data.append([data_1, data_2, descricao, valor, saldo])
+        # Extrair o texto de todas as páginas e remover os espaços
+        for page in reader.pages:
+            texto = page.extract_text()
+            if texto:
+                texto_completo += texto.replace(" ", "").replace("\n", "")  # Remove espaços e quebras de linha
+        
+        # Busca a palavra no texto sem espaços
+        if palavra.lower() in texto_completo.lower():  # Busca case-insensitive
+            return True
+    except Exception as e:
+        print(f"Erro ao ler {pdf_path}: {e}")
+    return False
 
-# Criar um DataFrame com os dados formatados
-df_formatado = pd.DataFrame(formatted_data, columns=["Data 1", "Data 2", "Descrição", "Valor (€)", "Saldo (€)"])
+# Função para mover o PDF para a pasta com a palavra, mantendo a estrutura de diretórios
+def mover_pdf_para_pasta(pdf_path, palavra, root):
+    # Obter a estrutura de pastas relativa ao diretório raiz
+    caminho_relativo = os.path.relpath(root, start=pasta_origem)
+    
+    # Criar a nova pasta de destino, mantendo a estrutura de pastas
+    pasta_destino = os.path.join(pasta_origem, palavra, caminho_relativo)
+    
+    # Se a pasta não existir, criá-la
+    if not os.path.exists(pasta_destino):
+        os.makedirs(pasta_destino)
+    
+    # Mover o arquivo para a nova pasta, mantendo o nome original do arquivo
+    shutil.move(pdf_path, os.path.join(pasta_destino, os.path.basename(pdf_path)))
+    print(f"Movido {pdf_path} para {pasta_destino}")
 
-# Salva os dados em um arquivo Excel
-df_formatado.to_excel("extrato_convertido.xlsx", index=False)
+# Função para processar todos os PDFs em uma pasta (e suas subpastas)
+def processar_pdfs_recursivamente(pasta_origem, lista_palavras):
+    for root, dirs, files in os.walk(pasta_origem):  # Caminha por pastas e subpastas
+        for arquivo in files:
+            if arquivo.endswith(".pdf"):
+                caminho_pdf = os.path.join(root, arquivo)
+                for palavra in lista_palavras:
+                    if buscar_palavra_pdf_sem_espacos(caminho_pdf, palavra):
+                        mover_pdf_para_pasta(caminho_pdf, palavra, root)
+                        break  # Se encontrar a palavra, mover e parar a busca nesse PDF
 
-# Exibe o DataFrame formatado
-print(df_formatado)
+# Exemplo de uso
+pasta_origem = './pdfs'  # Pasta onde estão os PDFs e subpastas
+lista_palavras = ['Quintanilha', 'LOGICO']  # Lista de palavras a serem buscadas
+
+processar_pdfs_recursivamente(pasta_origem, lista_palavras)
