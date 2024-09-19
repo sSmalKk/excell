@@ -50,6 +50,6 @@ def processar_pdfs_recursivamente(pasta_origem, lista_palavras):
 
 # Exemplo de uso
 pasta_origem = './pdfs'  # Pasta onde estão os PDFs e subpastas
-lista_palavras = ['Quintanilha', 'LOGICO']  # Lista de palavras a serem buscadas
+lista_palavras = ['Alphabetweek', 'LOGICO']  # Lista de palavras a serem buscadas
 
 processar_pdfs_recursivamente(pasta_origem, lista_palavras)
