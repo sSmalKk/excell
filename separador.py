@@ -3,7 +3,7 @@ import shutil
 from PyPDF2 import PdfReader
 
 # Função para buscar uma palavra em um PDF após remover os espaços
-def buscar_palavra_pdf_sem_espacos(pdf_path, palavra):
+def buscar_palavra_pdf_sem_espacos(pdf_path, lista_palavras):
     try:
         reader = PdfReader(pdf_path)
         texto_completo = ""
@@ -14,20 +14,23 @@ def buscar_palavra_pdf_sem_espacos(pdf_path, palavra):
             if texto:
                 texto_completo += texto.replace(" ", "").replace("\n", "")  # Remove espaços e quebras de linha
         
-        # Busca a palavra no texto sem espaços
-        if palavra.lower() in texto_completo.lower():  # Busca case-insensitive
-            return True
+        # Verifica se alguma palavra da lista está no texto (case-insensitive)
+        for palavra in lista_palavras:
+            if palavra.lower() in texto_completo.lower():
+                return palavra  # Retorna a palavra encontrada
+        
     except Exception as e:
         print(f"Erro ao ler {pdf_path}: {e}")
-    return False
+    
+    return None  # Nenhuma palavra encontrada
 
 # Função para mover o PDF para a pasta com a palavra, mantendo a estrutura de diretórios
-def mover_pdf_para_pasta(pdf_path, palavra, root):
+def mover_pdf_para_pasta(pdf_path, destino, root):
     # Obter a estrutura de pastas relativa ao diretório raiz
     caminho_relativo = os.path.relpath(root, start=pasta_origem)
     
     # Criar a nova pasta de destino, mantendo a estrutura de pastas
-    pasta_destino = os.path.join(pasta_origem, palavra, caminho_relativo)
+    pasta_destino = os.path.join(pasta_origem, destino, caminho_relativo)
     
     # Se a pasta não existir, criá-la
     if not os.path.exists(pasta_destino):
@@ -43,13 +46,19 @@ def processar_pdfs_recursivamente(pasta_origem, lista_palavras):
         for arquivo in files:
             if arquivo.endswith(".pdf"):
                 caminho_pdf = os.path.join(root, arquivo)
-                for palavra in lista_palavras:
-                    if buscar_palavra_pdf_sem_espacos(caminho_pdf, palavra):
-                        mover_pdf_para_pasta(caminho_pdf, palavra, root)
-                        break  # Se encontrar a palavra, mover e parar a busca nesse PDF
+                
+                # Buscar palavras no PDF
+                palavra_encontrada = buscar_palavra_pdf_sem_espacos(caminho_pdf, lista_palavras)
+                
+                # Se uma palavra foi encontrada, movê-lo para a pasta correspondente
+                if palavra_encontrada:
+                    mover_pdf_para_pasta(caminho_pdf, palavra_encontrada, root)
+                else:
+                    # Caso contrário, mover para a pasta 'nao encontrada'
+                    mover_pdf_para_pasta(caminho_pdf, 'nao encontrada', root)
 
 # Exemplo de uso
 pasta_origem = './pdfs'  # Pasta onde estão os PDFs e subpastas
-lista_palavras = ['Alphabetweek', 'LOGICO']  # Lista de palavras a serem buscadas
+lista_palavras = ['518239390', '515352179']  # Lista de palavras a serem buscadas
 
 processar_pdfs_recursivamente(pasta_origem, lista_palavras)
